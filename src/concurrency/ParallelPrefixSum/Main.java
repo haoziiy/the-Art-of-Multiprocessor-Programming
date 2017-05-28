@@ -1,47 +1,75 @@
 package concurrency.ParallelPrefixSum;
 
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 
-/**
- * Created by sherry on 2017/5/28.
- */
 public class Main {
 
-    public static class TreeNode{
-        int val;
-        TreeNode parent;
-        TreeNode left;
-        TreeNode right;
-        TreeNode(int val){
-            this.val = val;
+    public static final int m = 4;
+    public static ArrayList<Integer> values = prepareNumbers();
+    public static ArrayList<ArrayList<Integer>> B = new ArrayList<ArrayList<Integer>>();
+    public static ArrayList<ArrayList<Integer>> C = new ArrayList<ArrayList<Integer>>();
+    public static CountDownLatch latch;
+
+    public static void main(String[] args) throws InterruptedException {
+        printNumbers();
+
+        B.add(new ArrayList<Integer>(1 << m));
+        for (int i = 0; i < values.size(); i++) B.get(0).add(values.get(i));
+
+        for (int i = 1; i <= m; i++) {
+            final int l = 1 << (m - i);
+            B.add(new ArrayList<Integer>(l));
+            for (int j = 0; j < l; j++) B.get(i).add(0);
+
+            latch = new CountDownLatch(l);
+            for (int j = 0; j < l; j++) {
+                new Thread(new AddTwo(i, j)).start();
+            }
+            latch.await();
+        }
+
+        printResult(B, "B:");
+
+        for (int i = 0; i <= m; i++) {
+            final int l = 1 << i;
+            C.add(new ArrayList<Integer>(l));
+            for (int j = 0; j < l; j++) C.get(i).add(0);
+
+            latch = new CountDownLatch(l);
+            for (int j = 0; j < l; j++) {
+                new Thread(new CalcPrefix(i, j)).start();
+            }
+            latch.await();
+        }
+        printResult(C, "C:");
+    }
+
+    private static void printResult(ArrayList<ArrayList<Integer>> l, String name) {
+        System.out.println(name);
+        for (int i = 0; i < l.size(); i++) {
+            for (int j = 0; j < l.get(i).size(); j++)
+                System.out.print(l.get(i).get(j) + ", ");
+            System.out.println();
         }
     }
 
-    public static void main(String[] args){
+    private static ArrayList<Integer> prepareNumbers() {
+        ArrayList<Integer> values = new ArrayList<Integer>();
 
-        int[] arr = new int[100];
-        int[] prefix = new int[100];
-        Random random = new Random();
-        int total = 0;
-        // 初始化100个数字元素
-        for (int i = 0; i < arr.length; i++) {
-            arr[i] = random.nextInt(100);
+        Random rand = new Random();
+        for (int i = 0; i < 1 << m; i++) {
+            values.add(rand.nextInt(100));
         }
-        long time1 = new Date().getTime();
+        return values;
+    }
 
-
-        // System.out.println("数组中数的和为：" + new SumThread(arr,0,arr.length).sum(arr));
-        long time2 = new Date().getTime();
-        System.out.println("用时：" + (time2 - time1) + "毫秒");
+    private static void printNumbers() {
+        System.out.print("Numbers: ");
+        for (int i = 0; i < values.size(); i++) System.out.print(values.get(i) + ", ");
+        System.out.println();
     }
 
 
-
-    public static void buildPrefixTree(int[] arr, TreeNode treeNode){
-        TreeNode left = new TreeNode(arr[0]);
-        left.parent = new TreeNode(left.val);
-        left.parent.left = left;
-
-    }
 }
